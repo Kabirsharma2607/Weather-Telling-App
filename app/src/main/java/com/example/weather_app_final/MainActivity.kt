@@ -7,6 +7,7 @@ import android.util.Log
 import android.widget.SearchView
 import android.widget.Toast
 import androidx.annotation.RequiresApi
+import androidx.lifecycle.ViewModelProvider
 import com.example.weather_app_final.databinding.ActivityMainBinding
 import retrofit2.Call
 import retrofit2.Callback
@@ -18,21 +19,31 @@ class MainActivity : AppCompatActivity() {
     private val binding: ActivityMainBinding by lazy {
         ActivityMainBinding.inflate(layoutInflater)
     }
+
     private val apiKey = "97d7622cabe965a48bcd992af4c0d6d5"
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(binding.root)
+
+        val cityViewModel = ViewModelProvider(this).get(CityViewModel::class.java)
+
         fetchWeatherData("Chennai")
-        searchCity()
+        observeCities(cityViewModel)
+        searchCity(cityViewModel)
     }
 
-    private fun searchCity() {
+
+    private fun searchCity(cityViewModel: CityViewModel) {
         val searchView = binding.searchView2
-        searchView.setOnQueryTextListener(object : SearchView.OnQueryTextListener{
+
+
+        searchView.setOnQueryTextListener(object : SearchView.OnQueryTextListener {
             override fun onQueryTextSubmit(p0: String?): Boolean {
-                if(p0 != null){
+                if (p0 != null) {
                     fetchWeatherData(p0)
-                }else{
+                    val city = City(name = p0)
+                    cityViewModel.insert(city)
+                } else {
                     Toast.makeText(this@MainActivity, "Please enter a city", Toast.LENGTH_LONG).show()
                 }
                 return true
@@ -44,9 +55,9 @@ class MainActivity : AppCompatActivity() {
                 }
                 return true
             }
-
         })
     }
+
 
     private fun fetchWeatherData(city: String) {
         val retfroFit = Retrofit.Builder()
@@ -106,7 +117,10 @@ class MainActivity : AppCompatActivity() {
 
             override fun onFailure(call: Call<DataModel>, t: Throwable) {
                 Log.d("Error", "${t.message}")
+                // Missing proper error handling here
+                throw NotImplementedError("Not yet implemented")
             }
+
 
         })
 
@@ -114,7 +128,7 @@ class MainActivity : AppCompatActivity() {
 
     private fun changeImagesAccordingToWeatherConditions(conditon: String) {
         when (conditon){
-            "Hazy", "Partly cloudy", "Mist", "Intervals of clouds and sunshine", "Fog", "Mist", "Freezing Fog" ->{
+            "Haze", "Partly cloudy", "Mist", "Intervals of clouds and sunshine", "Fog", "Mist", "Freezing Fog" ->{
                 binding.root.setBackgroundResource(R.drawable.cloud_background)
                 binding.lottieAnimationView.setAnimation(R.raw.cloud)
             }
@@ -144,4 +158,12 @@ class MainActivity : AppCompatActivity() {
         }
         binding.lottieAnimationView.playAnimation()
     }
+
+    private fun observeCities(cityViewModel: CityViewModel) {
+        cityViewModel.allCities.observe(this) { cities ->
+            val cityNames = cities.joinToString(", ") { it.name }
+            binding.previousSearches.text = "Previous Searches: $cityNames"
+        }
+    }
+
 }
